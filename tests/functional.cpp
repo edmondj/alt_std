@@ -90,3 +90,26 @@ TEST(functional, no_extra_copies)
   func2 = func;
   EXPECT_EQ(count, 2);
 }
+
+TEST(functional, reassign)
+{
+  alt::move_only_function<int()> mo_func;
+
+  EXPECT_FALSE(mo_func);
+  mo_func = []() { return 42; };
+  EXPECT_TRUE(mo_func);
+  EXPECT_EQ(mo_func(), 42);
+  mo_func = []() { return 1337; };
+  EXPECT_TRUE(mo_func);
+  EXPECT_EQ(mo_func(), 1337);
+
+  alt::function<int()> func;
+
+  EXPECT_FALSE(func);
+  func = []() { return 42; };
+  EXPECT_TRUE(func);
+  EXPECT_EQ(func(), 42);
+  func = []() { return 1337; };
+  EXPECT_TRUE(func);
+  EXPECT_EQ(func(), 1337);
+}

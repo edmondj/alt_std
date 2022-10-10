@@ -12,79 +12,14 @@ namespace alt
   template<typename T>
   class function;
 
-  //namespace functional_detail
-  //{
-  //  template<typename TRet, typename... TArgs>
-  //  struct move_only_ftable
-  //  {
-  //      void (*destruct)(void*);
-  //      TRet(*invoke)(void*, TArgs...);
-  //  };
+  namespace functional_detail
+  {
+    template<typename TRet, typename... TArgs>
+    struct move_only_funcs;
 
-  //  template<typename TRet, typename... TArgs>
-  //  struct ftable : move_only_ftable<TRet, TArgs...>
-  //  {
-  //    void* copy(void*);
-  //  };
-
-  //  template<typename TFtable>
-  //  struct function_data_base
-  //  {
-  //    void* data;
-  //    const TFtable* ftable;
-
-  //    function_data(void* data, const TFtable* ftable) noexcept
-  //      : data(data), ftable(ftable)
-  //    {}
-
-  //    function_data(function_data&& other) noexcept
-  //    {
-  //      operator=(std::move(other));
-  //    }
-
-  //    function_data& operator=(function_data&& other) noexcept
-  //    {
-  //      std::swap(data, other.data);
-  //      std::swap(ftable, other.ftable);
-  //      return *this;
-  //    }
-
-  //    void destruct()
-  //    {
-  //      if (ftable)
-  //      {
-  //        ftable->destruct(data);
-  //      }
-  //    }
-
-  //    ~function_data()
-  //    {
-  //      destruct();
-  //    }
-  //  };
-
-  //  template<typename TRet, typename... TArgs>
-  //  using move_only_function_data = function_data_base<move_only_ftable<TRet, TArgs...>>;
-
-  //  template<typename TRet, typename... TArgs>
-  //  struct function_data : function_data_base<ftable<TRet, TArgs...>>
-  //  {
-  //    using TBase = function_data_base<ftable<TRet, TArgs...>>;
-
-  //    using TBase::function_data_base;
-  //    using TBase::operator=;
-
-  //    function_data(const function_data& other)
-  //      : TBase(other.ftable->copy(other.data), other.ftable)
-  //    {}
-
-  //    function_data& operator=(const function_data& other)
-  //    {
-  //      destruct();
-
-  //    }
-  //  };
-  //}
+    template<typename TRet, typename... TArgs>
+    struct funcs;
+  }
 
   template<typename TRet, typename... TArgs>
   class move_only_function<TRet(TArgs...)>
@@ -106,49 +41,15 @@ namespace alt
     explicit operator bool() const noexcept;
 
   protected:
-    template<typename TFunc>
-    using TRawFunc = std::remove_cv_t<std::remove_reference_t<TFunc>>;
 
-    struct move_only_funcs
-    {
-      void (*destruct)(void*);
-      TRet(*invoke)(void*, TArgs...);
-    };
-
-    const move_only_funcs* m_funcs = nullptr;
-    void* m_data;
-
-    template<typename TFunc>
-    static constexpr bool is_function_pointer_convertible = std::is_convertible_v<TRawFunc<TFunc>, TRet(*)(TArgs...)>;
-
-    template<typename TFunc>
-    static constexpr move_only_funcs move_only_funcs_for =
-    {
-      /*.destruct = */ [](void* data)
-      {
-        if constexpr (!is_function_pointer_convertible<TFunc>)
-        {
-          delete reinterpret_cast<TRawFunc<TFunc>*>(data);
-        }
-      },
-      /*.invoke = */ [](void* data, TArgs... args) -> TRet
-      {
-        if constexpr (is_function_pointer_convertible<TFunc>)
-        {
-          return reinterpret_cast<TRet(*)(TArgs...)>(data)(args...);
-        }
-        else
-        {
-          return reinterpret_cast<TRawFunc<TFunc>*>(data)->operator()(args...);
-        }
-      }
-    };
+    const functional_detail::move_only_funcs<TRet, TArgs...>* m_funcs = nullptr;
+    void* m_data = nullptr;
 
     template<typename TFunc>
     static void* construct(TFunc&& func);
     void destruct() noexcept;
 
-    move_only_function(const move_only_funcs* funcs, void* data) noexcept;
+    move_only_function(const functional_detail::move_only_funcs<TRet, TArgs...>* funcs, void* data) noexcept;
 
     move_only_function(const move_only_function&) = delete;
     move_only_function(move_only_function&) = delete;
@@ -177,33 +78,73 @@ namespace alt
 
     function& operator=(const function& other);
     function& operator=(function&);
+  };
 
-  private:
-    struct funcs : TBase::move_only_funcs
+  // Implementation
+
+  namespace functional_detail
+  {
+    template<typename TFunc>
+    using TRawFunc = std::remove_cv_t<std::remove_reference_t<TFunc>>;
+
+    template<typename TFunc, typename TRet, typename... TArgs>
+    static constexpr bool is_function_pointer_convertible = std::is_convertible_v<TRawFunc<TFunc>, TRet(*)(TArgs...)>;
+  
+    template<typename TRet, typename... TArgs>
+    struct move_only_funcs
+    {
+      void (*destruct)(void*);
+      TRet(*invoke)(void*, TArgs...);
+    };
+
+    template<typename TFunc, typename TRet, typename... TArgs>
+    static constexpr move_only_funcs<TRet, TArgs...> move_only_funcs_for =
+    {
+      /*.destruct = */ [](void* data)
+      {
+        if constexpr (!is_function_pointer_convertible<TFunc, TRet, TArgs...>)
+        {
+          delete reinterpret_cast<TRawFunc<TFunc>*>(data);
+        }
+      },
+      /*.invoke = */ [](void* data, TArgs... args) -> TRet
+      {
+        if constexpr (is_function_pointer_convertible<TFunc, TRet, TArgs...>)
+        {
+          return reinterpret_cast<TRet(*)(TArgs...)>(data)(args...);
+        }
+        else
+        {
+          return reinterpret_cast<TRawFunc<TFunc>*>(data)->operator()(args...);
+        }
+      }
+    };
+
+    template<typename TRet, typename... TArgs>
+    struct funcs : move_only_funcs<TRet, TArgs...>
     {
       void* (*copy)(void*);
     };
 
-    template<typename TFunc>
-    static constexpr funcs funcs_for =
+    template<typename TFunc, typename TRet, typename... TArgs>
+    static constexpr funcs<TRet, TArgs...> funcs_for =
     {
-      /*.destruct = */ TBase::template move_only_funcs_for<TFunc>.destruct,
-      /*.invoke = */ TBase::template move_only_funcs_for<TFunc>.invoke,
+      /*.destruct = */ move_only_funcs_for<TFunc, TRet, TArgs...>.destruct,
+      /*.invoke = */ move_only_funcs_for<TFunc, TRet, TArgs...>.invoke,
       /*.copy = */ [](void* data) -> void*
       {
-        if constexpr (TBase::template is_function_pointer_convertible<TFunc>)
+        if constexpr (is_function_pointer_convertible<TFunc, TRet, TArgs...>)
         {
           return data;
         }
         else
         {
-          return new typename TBase::template TRawFunc<TFunc>(*reinterpret_cast<typename TBase::template TRawFunc<TFunc>*>(data));
+          return new TRawFunc<TFunc>(*reinterpret_cast<TRawFunc<TFunc>*>(data));
         }
       }
     };
-  };
 
-  // Implementation
+  }
 
   template<typename TRet, typename ...TArgs>
   inline move_only_function<TRet(TArgs...)>::move_only_function(move_only_function&& other) noexcept
@@ -214,7 +155,7 @@ namespace alt
   }
 
   template<typename TRet, typename... TArgs>
-  inline move_only_function<TRet(TArgs...)>::move_only_function(const move_only_funcs* funcs, void* data) noexcept
+  inline move_only_function<TRet(TArgs...)>::move_only_function(const functional_detail::move_only_funcs<TRet, TArgs...>* funcs, void* data) noexcept
     : m_funcs(funcs)
     , m_data(data)
   {}
@@ -222,7 +163,7 @@ namespace alt
   template<typename TRet, typename... TArgs>
   template<typename TFunc>
   inline move_only_function<TRet(TArgs...)>::move_only_function(TFunc&& func)
-    : move_only_function(&move_only_funcs_for<TFunc>, construct(std::forward<TFunc>(func)))
+    : move_only_function(&functional_detail::move_only_funcs_for<TFunc, TRet, TArgs...>, construct(std::forward<TFunc>(func)))
   {}
 
   template<typename TRet, typename ...TArgs>
@@ -241,8 +182,8 @@ namespace alt
   inline auto move_only_function<TRet(TArgs...)>::operator=(TFunc&& func) -> move_only_function&
   {
     destruct();
-    m_funcs = &move_only_funcs_for<TFunc>;
-    m_data = construct_data(std::forward<TFunc>(func));
+    m_funcs = &functional_detail::move_only_funcs_for<TFunc, TRet, TArgs...>;
+    m_data = construct(std::forward<TFunc>(func));
     return *this;
   }
 
@@ -265,13 +206,13 @@ namespace alt
   template<typename TFunc>
   void* move_only_function<TRet(TArgs...)>::construct(TFunc&& func)
   {
-    if constexpr (is_function_pointer_convertible<TFunc>)
+    if constexpr (functional_detail::is_function_pointer_convertible<TFunc, TRet, TArgs...>)
     {
       return reinterpret_cast<void*>(static_cast<TRet(*)(TArgs...)>(func));
     }
     else
     {
-      return new TRawFunc<TFunc>(std::forward<TFunc>(func));
+      return new functional_detail::TRawFunc<TFunc>(std::forward<TFunc>(func));
     }
   }
 
@@ -309,7 +250,7 @@ namespace alt
     if (other.m_data)
     {
       TBase::m_funcs = other.m_funcs;
-      TBase::m_data = static_cast<const funcs*>(TBase::m_funcs)->copy(other.m_data);
+      TBase::m_data = static_cast<const functional_detail::funcs<TRet, TArgs...>*>(TBase::m_funcs)->copy(other.m_data);
     }
     return *this;
   }
@@ -323,7 +264,7 @@ namespace alt
   template<typename TRet, typename... TArgs>
   template<typename TFunc, typename>
   inline function<TRet(TArgs...)>::function(TFunc&& func)
-    : TBase::move_only_function(&funcs_for<TFunc>, TBase::construct(std::forward<TFunc>(func)))
+    : TBase::move_only_function(&functional_detail::funcs_for<TFunc, TRet, TArgs...>, TBase::construct(std::forward<TFunc>(func)))
   {}
 
   template<typename TRet, typename... TArgs>
@@ -331,9 +272,8 @@ namespace alt
   inline auto function<TRet(TArgs...)>::operator=(TFunc&& func) -> function&
   {
     TBase::destruct();
-    TBase::m_funcs = &funcs_for<TFunc>();
-    TBase::m_data = construct_data(std::forward<TFunc>(func));
+    TBase::m_funcs = &functional_detail::funcs_for<TFunc, TRet, TArgs...>;
+    TBase::m_data = TBase::construct(std::forward<TFunc>(func));
     return *this;
   }
 }
-
