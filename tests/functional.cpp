@@ -112,4 +112,12 @@ TEST(functional, reassign)
   func = []() { return 1337; };
   EXPECT_TRUE(func);
   EXPECT_EQ(func(), 1337);
+
+  alt::function<int()> func2;
+
+  func2 = func;
+  EXPECT_TRUE(func);
+  EXPECT_TRUE(func2);
+  EXPECT_EQ(func(), 1337);
+  EXPECT_EQ(func2(), 1337);
 }
