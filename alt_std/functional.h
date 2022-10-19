@@ -1,8 +1,24 @@
 ﻿#pragma once
 
 #include <type_traits>
-#include <cassert>
 #include <utility>
+
+#if __cpp_exceptions
+
+#include <exception>
+
+namespace alt
+{
+  struct bad_function_call final : std::exception
+  {
+    inline virtual const char* what() const noexcept override
+    {
+      return "empty function was called";
+    }
+  };
+}
+
+#endif // __cpp_exceptions
 
 namespace alt
 {
@@ -219,7 +235,12 @@ namespace alt
   template<typename TRet, typename... TArgs>
   TRet move_only_function<TRet(TArgs...)>::operator()(TArgs... args) const
   {
-    assert(m_funcs);
+#if __cpp_exceptions
+    if (!m_funcs)
+    {
+      throw bad_function_call{};
+    }
+#endif
     return m_funcs->invoke(m_data, args...);
   }
 

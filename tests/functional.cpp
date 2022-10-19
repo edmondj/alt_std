@@ -1,6 +1,7 @@
 #include "alt_std/functional.h"
 #include <type_traits>
 #include <gtest/gtest.h>
+#include <cstdio>
 
 static size_t foo(int, char) { return 42; }
 
@@ -121,3 +122,24 @@ TEST(functional, reassign)
   EXPECT_EQ(func(), 1337);
   EXPECT_EQ(func2(), 1337);
 }
+
+#if __cpp_exceptions
+
+TEST(functional, exceptions)
+{
+  alt::function<void()> func;
+
+  try
+  {
+    func();
+  }
+  catch (const alt::bad_function_call& e)
+  {
+    printf("Caught exception: %s", e.what());
+    SUCCEED();
+    return;
+  }
+  FAIL();
+}
+
+#endif

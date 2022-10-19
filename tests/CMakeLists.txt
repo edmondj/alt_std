@@ -23,11 +23,17 @@ target_link_libraries(alt_std_tests
 include(GoogleTest)
 gtest_discover_tests(alt_std_tests)
 
-include(CodeCoverage)
-append_coverage_compiler_flags_to_target(alt_std_tests)
+find_program( GCOV_PATH gcov )
 
-setup_target_for_coverage_gcovr_html(
-    NAME alt_std_tests_coverage
-    EXECUTABLE alt_std_tests
-	EXCLUDE "${PROJECT_SOURCE_DIR}/out" "${PROJECT_SOURCE_DIR}/tests"
-)
+if (GCOV_PATH)
+	include(CodeCoverage)
+	append_coverage_compiler_flags_to_target(alt_std_tests)
+
+	setup_target_for_coverage_gcovr_html(
+		NAME alt_std_tests_coverage
+		EXECUTABLE alt_std_tests
+		EXCLUDE "${PROJECT_SOURCE_DIR}/out" "${PROJECT_SOURCE_DIR}/tests"
+	)
+else()
+	message("gcov not found, disabling code coverage")
+endif()

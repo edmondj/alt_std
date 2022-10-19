@@ -1,5 +1,5 @@
 ﻿{
-    "version": 3,
+  "version": 3,
   "configurePresets": [
     {
       "name": "windows-base",
@@ -30,11 +30,27 @@
       }
     },
     {
+      "name": "x64-debug-nort",
+      "displayName": "x64 Debug NORT",
+      "inherits": "x64-debug",
+      "cacheVariables": {
+        "ENABLE_RT": false
+      }
+    },
+    {
       "name": "x64-release",
       "displayName": "x64 Release",
       "inherits": "x64-debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "x64-release-nort",
+      "displayName": "x64 Release NORT",
+      "inherits": "x64-release",
+      "cacheVariables": {
+        "ENABLE_RT": false
       }
     },
     {
@@ -78,6 +94,14 @@
       }
     },
     {
+      "name": "linux-debug-nort",
+      "displayName": "Linux Debug NORT",
+      "inherits": "linux-debug",
+      "cacheVariables": {
+        "ENABLE_RT": false
+      }
+    },
+    {
       "name": "linux-release",
       "displayName": "Linux Release",
       "generator": "Ninja",
@@ -95,6 +119,14 @@
         "microsoft.com/VisualStudioRemoteSettings/CMake/1.0": {
           "sourceDir": "$env{HOME}/.vs/$ms{projectDirName}"
         }
+      }
+    },
+    {
+      "name": "linux-release-nort",
+      "displayName": "Linux Release NORT",
+      "inherits": "linux-release",
+      "cacheVariables": {
+        "ENABLE_RT": false
       }
     },
     {
