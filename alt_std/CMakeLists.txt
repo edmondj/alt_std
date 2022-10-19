@@ -13,3 +13,5 @@ target_compile_features(alt_std INTERFACE cxx_std_17)
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET alt_std PROPERTY CXX_STANDARD 20)
 endif()
+
+target_alt_add_flags(alt_std)

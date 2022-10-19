@@ -1,0 +1,42 @@
+diff --git a/include/benchmark/benchmark.h b/include/benchmark/benchmark.h
+index b25b001..bfb55c4 100644
+--- a/include/benchmark/benchmark.h
++++ b/include/benchmark/benchmark.h
+@@ -986,7 +986,7 @@ typedef void(Function)(State&);
+ // chained into one expression.
+ class BENCHMARK_EXPORT Benchmark {
+  public:
+-  virtual ~Benchmark();
++  virtual ~Benchmark() = default;
+ 
+   // Note: the following methods all return "this" so that multiple
+   // method calls can be chained together in one expression.
+@@ -1252,11 +1252,13 @@ BENCHMARK_EXPORT void ClearRegisteredBenchmarks();
+ namespace internal {
+ // The class used to hold all Benchmarks created from static function.
+ // (ie those created using the BENCHMARK(...) macros.
+-class BENCHMARK_EXPORT FunctionBenchmark : public Benchmark {
++class BENCHMARK_EXPORT FunctionBenchmark final : public Benchmark {
+  public:
+-  FunctionBenchmark(const char* name, Function* func)
++  BENCHMARK_ALWAYS_INLINE FunctionBenchmark(const char* name, Function* func)
+       : Benchmark(name), func_(func) {}
+ 
++  BENCHMARK_ALWAYS_INLINE ~FunctionBenchmark() = default;
++
+   virtual void Run(State& st) BENCHMARK_OVERRIDE;
+ 
+  private:
+diff --git a/src/benchmark_register.cc b/src/benchmark_register.cc
+index a42b766..a76f1de 100644
+--- a/src/benchmark_register.cc
++++ b/src/benchmark_register.cc
+@@ -227,8 +227,6 @@ Benchmark::Benchmark(const char* name)
+   ComputeStatistics("cv", StatisticsCV, kPercentage);
+ }
+ 
+-Benchmark::~Benchmark() {}
+-
+ Benchmark* Benchmark::Name(const std::string& name) {
+   SetName(name.c_str());
+   return this;
