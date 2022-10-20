@@ -10,6 +10,8 @@ target_link_libraries(alt_std_tests
 	PUBLIC alt_std GTest::gtest_main
 )
 
+target_alt_add_flags(alt_std_tests)
+
 include(FetchContent)
 FetchContent_Declare(googletest
   GIT_REPOSITORY https://github.com/google/googletest.git
@@ -22,7 +24,7 @@ FetchContent_MakeAvailable(googletest)
 include(GoogleTest)
 gtest_discover_tests(alt_std_tests)
 
-find_program( GCOV_PATH gcov )
+find_program(GCOV_PATH gcov)
 
 if (GCOV_PATH)
 	include(CodeCoverage)
@@ -33,8 +35,14 @@ if (GCOV_PATH)
 		EXECUTABLE alt_std_tests
 		EXCLUDE "${PROJECT_SOURCE_DIR}/out" "${PROJECT_SOURCE_DIR}/tests"
 	)
-else()
+else ()
 	message("gcov not found, disabling code coverage")
-endif()
+endif ()
 
-target_alt_add_flags(alt_std_tests)
+find_program(VALGRIND_PATH valgrind)
+
+if (VALGRIND_PATH)
+	add_test(NAME alt_std_tests_valgrind
+		COMMAND valgrind alt_std_tests
+	)
+endif ()

@@ -31,7 +31,7 @@ endfunction()
 add_subdirectory("alt_std")
 add_subdirectory("tests")
 
-option(BUILD_BENCHMARK "Build the benchmark project" ON)
+option(BUILD_BENCHMARK "Build the benchmark project" OFF)
 
 if (${BUILD_BENCHMARK})
 	add_subdirectory("benchmark")
