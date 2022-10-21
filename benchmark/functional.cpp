@@ -1,10 +1,11 @@
 #include <benchmark/benchmark.h>
 #include <functional>
+#include <array>
 #include <alt_std/functional.h>
 
 
 template<template<typename> typename function>
-void ctor_fptr(benchmark::State& state) {
+static void ctor_fptr(benchmark::State& state) {
   for (auto _ : state) {
     benchmark::DoNotOptimize(function<void()>([]() {}));
   }
@@ -13,7 +14,7 @@ BENCHMARK(ctor_fptr<std::function>);
 BENCHMARK(ctor_fptr<alt::function>);
 
 template<template<typename> typename function, size_t size>
-void ctor_capture(benchmark::State& state) {
+static void ctor_capture(benchmark::State& state) {
   struct payload
   {
     char data[size];
@@ -37,38 +38,57 @@ BENCHMARK(ctor_capture<std::function, 256>);
 BENCHMARK(ctor_capture<alt::function, 256>);
 
 template<template<typename> typename function>
-void invoke_fptr(benchmark::State& state)
+static void invoke(benchmark::State& state, function<int(int, int)> f)
 {
-  function<int(int, int)> f = [](int l, int r) { return l + r; };
   for (auto _ : state)
   {
     benchmark::DoNotOptimize(f(1, 2));
   }
 }
-BENCHMARK(invoke_fptr<std::function>);
-BENCHMARK(invoke_fptr<alt::function>);
+BENCHMARK_CAPTURE(invoke<std::function>, fptr, [](int l, int r) { return l + r; });
+BENCHMARK_CAPTURE(invoke<alt::function>, fptr, [](int l, int r) { return l + r; });
+BENCHMARK_CAPTURE(invoke<std::function>, sbo, [i = 42](int l, int r) { return l + r; });
+BENCHMARK_CAPTURE(invoke<alt::function>, sbo, [i = 42](int l, int r) { return l + r; });
+BENCHMARK_CAPTURE(invoke<std::function>, heavy, [i = std::array<char, 256>{}](int l, int r) { return l + r; });
+BENCHMARK_CAPTURE(invoke<alt::function>, heavy, [i = std::array<char, 256>{}](int l, int r) { return l + r; });
 
 template<template<typename> typename function>
-void invoke_sbo(benchmark::State& state)
+static void move_fptr(benchmark::State& state, function<void()> init)
 {
-  function<int(int, int)> f = [i = 42](int l, int r) { return l + r + i; };
   for (auto _ : state)
   {
-    benchmark::DoNotOptimize(f(1, 2));
+    state.PauseTiming();
+    function<void()> src = init;
+    function<void()> dst;
+    state.ResumeTiming();
+    dst = std::move(src);
+    benchmark::DoNotOptimize(dst);
   }
 }
-BENCHMARK(invoke_sbo<std::function>);
-BENCHMARK(invoke_sbo<alt::function>);
+BENCHMARK_CAPTURE(move_fptr<std::function>, fptr, []() {});
+BENCHMARK_CAPTURE(move_fptr<alt::function>, fptr, []() {});
+BENCHMARK_CAPTURE(move_fptr<std::function>, sbo, [i = 42]() {});
+BENCHMARK_CAPTURE(move_fptr<alt::function>, sbo, [i = 42]() {});
+BENCHMARK_CAPTURE(move_fptr<std::function>, heavy, [i = std::array<char, 256>{}]() {});
+BENCHMARK_CAPTURE(move_fptr<alt::function>, heavy, [i = std::array<char, 256>{}]() {});
+
 
 template<template<typename> typename function>
-void invoke_heavy(benchmark::State& state)
+static void copy_fptr(benchmark::State& state, function<void()> init)
 {
-  char payload[256]{};
-  function<int(int, int)> f = [payload](int l, int r) { return l + r; };
   for (auto _ : state)
   {
-    benchmark::DoNotOptimize(f(1, 2));
+    state.PauseTiming();
+    function<void()> src = init;
+    function<void()> dst;
+    state.ResumeTiming();
+    dst = src;
+    benchmark::DoNotOptimize(dst);
   }
 }
-BENCHMARK(invoke_heavy<std::function>);
-BENCHMARK(invoke_heavy<alt::function>);
+BENCHMARK_CAPTURE(copy_fptr<std::function>, fptr, []() {});
+BENCHMARK_CAPTURE(copy_fptr<alt::function>, fptr, []() {});
+BENCHMARK_CAPTURE(copy_fptr<std::function>, sbo, [i = 42]() {});
+BENCHMARK_CAPTURE(copy_fptr<alt::function>, sbo, [i = 42]() {});
+BENCHMARK_CAPTURE(copy_fptr<std::function>, heavy, [i = std::array<char, 256>{}]() {});
+BENCHMARK_CAPTURE(copy_fptr<alt::function>, heavy, [i = std::array<char, 256>{}]() {});

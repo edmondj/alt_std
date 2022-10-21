@@ -144,6 +144,10 @@ namespace alt
         else
         {
           *dest = *data;
+          if constexpr (!is_function_pointer_convertible<TFunc, TRet, TArgs...> && !is_sbo<TFunc>)
+          {
+            *data = nullptr;
+          }
         }
       },
       /*.invoke = */ [](void** data, TArgs... args) -> TRet

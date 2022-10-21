@@ -2,6 +2,7 @@
 #include <type_traits>
 #include <gtest/gtest.h>
 #include <cstdio>
+#include <array>
 
 static size_t foo(int, char) { return 42; }
 
@@ -145,6 +146,75 @@ TEST(functional, no_extra_copies)
   EXPECT_EQ(count, 2);
 }
 
+TEST(functional, move)
+{
+  std::function<int()> f1;
+  std::function<int()> f2;
+
+  f1 = []() { return 42; };;
+  f2 = {};
+  EXPECT_TRUE(f1);
+  EXPECT_FALSE(f2);
+  f2 = std::move(f1);
+  EXPECT_FALSE(f1);
+  EXPECT_TRUE(f2);
+  EXPECT_EQ(f2(), 42);
+
+  f1 = [i = 42]() { return i; };
+  f2 = {};
+  EXPECT_TRUE(f1);
+  EXPECT_FALSE(f2);
+  f2 = std::move(f1);
+  EXPECT_FALSE(f1);
+  EXPECT_TRUE(f2);
+  EXPECT_EQ(f2(), 42);
+
+  f1 = [i = std::array<int, 128>{42}]() { return i[0]; };
+  f2 = {};
+  EXPECT_TRUE(f1);
+  EXPECT_FALSE(f2);
+  f2 = std::move(f1);
+  EXPECT_FALSE(f1);
+  EXPECT_TRUE(f2);
+  EXPECT_EQ(f2(), 42);
+}
+
+TEST(functional, copy)
+{
+  std::function<int()> f1;
+  std::function<int()> f2;
+
+  f1 = []() { return 42; };;
+  f2 = {};
+  EXPECT_TRUE(f1);
+  EXPECT_FALSE(f2);
+  f2 = f1;
+  EXPECT_TRUE(f1);
+  EXPECT_TRUE(f2);
+  EXPECT_EQ(f1(), 42);
+  EXPECT_EQ(f2(), 42);
+
+  f1 = [i = 42]() { return i; };
+  f2 = {};
+  EXPECT_TRUE(f1);
+  EXPECT_FALSE(f2);
+  f2 = f1;
+  EXPECT_TRUE(f1);
+  EXPECT_TRUE(f2);
+  EXPECT_EQ(f1(), 42);
+  EXPECT_EQ(f2(), 42);
+
+  f1 = [i = std::array<int, 128>{42}]() { return i[0]; };
+  f2 = {};
+  EXPECT_TRUE(f1);
+  EXPECT_FALSE(f2);
+  f2 = f1;
+  EXPECT_TRUE(f1);
+  EXPECT_TRUE(f2);
+  EXPECT_EQ(f1(), 42);
+  EXPECT_EQ(f2(), 42);
+}
+
 TEST(functional, reassign)
 {
   alt::move_only_function<int()> mo_func;
@@ -174,6 +244,13 @@ TEST(functional, reassign)
   EXPECT_TRUE(func2);
   EXPECT_EQ(func(), 1337);
   EXPECT_EQ(func2(), 1337);
+}
+
+TEST(functional, heavy_move)
+{
+  alt::function<void()> src = [i = std::array<char, 256>{}]() {};
+  alt::function<void()> dst;
+  dst = std::move(src);
 }
 
 #if __cpp_exceptions

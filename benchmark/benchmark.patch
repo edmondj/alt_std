@@ -1,5 +1,5 @@
 diff --git a/include/benchmark/benchmark.h b/include/benchmark/benchmark.h
-index b25b001..bfb55c4 100644
+index b25b001..fc2d0c6 100644
 --- a/include/benchmark/benchmark.h
 +++ b/include/benchmark/benchmark.h
 @@ -986,7 +986,7 @@ typedef void(Function)(State&);
@@ -27,6 +27,15 @@ index b25b001..bfb55c4 100644
    virtual void Run(State& st) BENCHMARK_OVERRIDE;
  
   private:
+@@ -1402,7 +1404,7 @@ class Fixture : public internal::Benchmark {
+ // /* Registers a benchmark named "BM_takes_args/int_string_test` */
+ // BENCHMARK_CAPTURE(BM_takes_args, int_string_test, 42, std::string("abc"));
+ #define BENCHMARK_CAPTURE(func, test_case_name, ...)     \
+-  BENCHMARK_PRIVATE_DECLARE(func) =                      \
++  BENCHMARK_PRIVATE_DECLARE(_benchmark_) =               \
+       (::benchmark::internal::RegisterBenchmarkInternal( \
+           new ::benchmark::internal::FunctionBenchmark(  \
+               #func "/" #test_case_name,                 \
 diff --git a/src/benchmark_register.cc b/src/benchmark_register.cc
 index a42b766..a76f1de 100644
 --- a/src/benchmark_register.cc
